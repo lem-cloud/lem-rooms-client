@@ -1,44 +1,12 @@
 (uiop:define-package :lem-rooms-client
-  (:use :cl
-        :lem
-        #:alexandria)
+  (:use #:cl
+        #:lem
+        #:alexandria
+        #:lem-rooms-client/utils
+        #:lem-rooms-client/config)
+  (:local-nicknames (:http :lem-rooms-client/http))
   (:export))
 (in-package :lem-rooms-client)
-
-(defun hash (&rest plist)
-  (let ((hash (make-hash-table :test 'equal)))
-    (loop :for (key value) :on plist :by #'cddr
-          :do (setf (gethash (string-downcase key)
-                             hash)
-                    value))
-    hash))
-
-(defun json (&rest plist)
-  (with-output-to-string (out)
-    (yason:encode (apply #'hash plist) out)))
-
-(defun pretty-json (object &optional (stream *standard-output*))
-  (yason:with-output (stream :indent t)
-    (yason:encode object)))
-
-(defun pretty-json-to-string (object)
-  (with-output-to-string (out)
-    (pretty-json object out)))
-
-(defun print-json (json &optional (stream *standard-output*))
-  (yason:with-output (stream :indent t)
-    (yason:encode (yason:parse json))))
-
-(defun url (path)
-  (quri:make-uri :defaults "http://localhost:5000/"
-                 :path path))
-
-(defun headers ()
-  (let ((access-token (config :rooms.access-token)))
-    `(("content-type" . "application/json")
-      ("Authorization" . ,(format nil "Bearer ~A" access-token)))))
-
-
 
 (defun rooms-home ()
   (merge-pathnames "Rooms/" (user-homedir-pathname)))
@@ -58,34 +26,17 @@
 (defun position-of (point)
   (1- (position-at-point point)))
 
-
-(defun authorize-url ()
-  (let ((json (yason:parse (dex:get (url "/github/authorize-url")))))
-    (gethash "url" json)))
-
-(defun authenticate (code)
-  (yason:parse (dex:get (url (format nil "editor-server/github/authenticate?code=~A" code)))))
-
-(define-command rooms-sign-in () ()
-  (lem:open-external-file (authorize-url))
-  (let ((code (prompt-for-string "code: ")))
-    (setf (config :rooms.access-token)
-          (gethash "access_token" (authenticate code)))
-    (message "sign in")))
-
 (defun get-rooms ()
-  (let ((response (dex:get (url "rooms-v2"))))
-    (yason:parse response)))
+  (http:get "rooms-v2"))
 
 (defun create-room (room-name)
-  (dex:post (url "rooms-v2")
-            :headers (headers)
-            :content (json :name room-name
-                           :scope "public")))
+  (http:post "rooms-v2"
+             (json :name room-name
+                   :scope "public")))
 
 (defun fetch-room (room-id)
-  (dex:get (url (format nil "rooms-v2/~A" room-id))
-           :headers (headers)))
+  (http:get (format nil "rooms-v2/~A" room-id)
+            :authorization t))
 
 (defvar *client* nil)
 
@@ -111,13 +62,13 @@
 
 (defun fetch-file-text (file-id)
   (jsonrpc-call "fetch-file-text"
-                (hash :access-token (config :rooms.access-token)
+                (hash :access-token (access-token)
                       :file-id file-id)))
 
 (defun enter-room (room-id)
   (let ((response
           (jsonrpc-call "enter-room"
-                        (hash :access-token (config :rooms.access-token)
+                        (hash :access-token (access-token)
                               :room-id room-id)))
         (room-directory
           (uiop:ensure-directory-pathname
@@ -179,7 +130,7 @@
     (when (room-path-p filename)
       (let* ((room-id (file-room-id filename))
              (response (jsonrpc-call "open-file"
-                                     (hash :access-token (config :rooms.access-token)
+                                     (hash :access-token (access-token)
                                            :room-id room-id
                                            :path (file-to-room-path room-id filename)
                                            :text (buffer-text buffer)))))
@@ -203,7 +154,7 @@
         (etypecase arg
           (string
            (jsonrpc-notify "insert-string"
-                           (hash :access-token (config :rooms.access-token)
+                           (hash :access-token (access-token)
                                  :file-id file-id
                                  :position (position-of point)
                                  :string arg)))
@@ -211,7 +162,7 @@
            (with-point ((end point))
              (character-offset end arg)
              (jsonrpc-notify "delete-string"
-                             (hash :access-token (config :rooms.access-token)
+                             (hash :access-token (access-token)
                                    :file-id file-id
                                    :region (hash :start (position-of point)
                                                  :end (position-of end)))))))))))
