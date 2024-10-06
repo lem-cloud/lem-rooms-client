@@ -175,7 +175,10 @@
                                      (declare (ignore component))
                                      (list (format nil "~A  " (gethash "name" room))
                                            (format nil "~A  " (gethash "scope" room))
-                                           (format nil "~A  " (gethash "github_login" (gethash "owner" room)))))
+                                           (format nil
+                                                   "~A  "
+                                                   (gethash "github_login"
+                                                            (gethash "owner" room)))))
                   :items (get-rooms)
                   :select-callback (lambda (component room)
                                      (lem/multi-column-list:quit component)
