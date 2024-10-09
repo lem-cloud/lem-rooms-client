@@ -42,7 +42,10 @@
 
 (defun connect ()
   (setf *client* (jsonrpc:make-client))
-  (jsonrpc:client-connect *client* :mode :websocket :port 51000))
+  (jsonrpc:client-connect *client*
+                          :mode :websocket
+                          :host (hostname)
+                          :port 51000))
 
 (defun ensure-connection ()
   (unless *client*

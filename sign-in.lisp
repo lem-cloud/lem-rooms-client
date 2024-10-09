@@ -9,11 +9,11 @@
 (in-package :lem-rooms-client/sign-in)
 
 (defun authorize-url ()
-  (let ((json (http:get "/github/authorize-url")))
+  (let ((json (http:get "/editor-server/github/authorize-url")))
     (gethash "url" json)))
 
 (defun authenticate (code)
-  (http:get (format nil "editor-server/github/authenticate?code=~A" code)))
+  (http:get (format nil "/editor-server/github/authenticate?code=~A" code)))
 
 (define-command rooms-sign-in () ()
   (lem:open-external-file (authorize-url))
