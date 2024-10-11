@@ -12,4 +12,4 @@
   (setf (config :rooms.access-token) access-token))
 
 (defun hostname ()
-  "192.168.1.254")
+  "localhost")

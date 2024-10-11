@@ -4,9 +4,12 @@
         #:alexandria
         #:lem-rooms-client/utils
         #:lem-rooms-client/config)
-  (:local-nicknames (:http :lem-rooms-client/http))
+  (:local-nicknames (:http :lem-rooms-client/http)
+                    (:woot :crdt/woot))
   (:export))
 (in-package :lem-rooms-client)
+
+(defvar *inhibit-did-change* nil)
 
 (defun rooms-home ()
   (merge-pathnames "Rooms/" (user-homedir-pathname)))
@@ -22,6 +25,12 @@
 
 (defun (setf buffer-file-path) (file-path buffer)
   (setf (buffer-value buffer 'file-path) file-path))
+
+(defun buffer-document (buffer)
+  (buffer-value buffer 'document))
+
+(defun (setf buffer-document) (document buffer)
+  (setf (buffer-value buffer 'document) document))
 
 (defun position-of (point)
   (1- (position-at-point point)))
@@ -120,13 +129,21 @@
         (gethash "path" file)))
 
 (defun set-buffer-text (buffer text)
-  (delete-between-points (buffer-start-point buffer)
-                         (buffer-end-point buffer))
-  (insert-string (buffer-point buffer) text)
-  (when (buffer-enable-undo-p buffer)
-    (buffer-disable-undo buffer)
-    (buffer-enable-undo buffer))
-  (buffer-start (buffer-point buffer)))
+  (let ((*inhibit-did-change* t))
+    (delete-between-points (buffer-start-point buffer)
+                           (buffer-end-point buffer))
+    (insert-string (buffer-point buffer) text)
+    (when (buffer-enable-undo-p buffer)
+      (buffer-disable-undo buffer)
+      (buffer-enable-undo buffer))
+    (buffer-start (buffer-point buffer))))
+
+(defun make-document-from-text (text)
+  (let ((document (woot:make-document (frugal-uuid:make-v4-string))))
+    (loop :for c :across text
+          :for pos :from 0
+          :do (woot:generate-insert document pos c))
+    document))
 
 (defun on-find-file (buffer)
   (when-let ((filename (buffer-filename buffer)))
@@ -138,37 +155,52 @@
                                            :path (file-to-room-path room-id filename)
                                            :text (buffer-text buffer)))))
         (cond ((null (gethash "error" response))
-               (set-file-info buffer response))
+               (set-file-info buffer response)
+               (setf (buffer-document buffer)
+                     (make-document-from-text (buffer-text buffer))))
               ((equal "already-file-exists" (gethash "error" response))
                (let ((file (gethash "file" response))
-                     (text (gethash "text" response)))
-                 (set-buffer-text buffer text)
-                 (set-file-info buffer file)))
+                     (woot-sequence (gethash "woot-sequence" response))
+                     (document (woot:make-document (frugal-uuid:make-v4-string))))
+                 (woot:replace-with-woot-sequence document
+                                                  (map 'vector
+                                                       #'woot:make-character-from-hash
+                                                       woot-sequence))
+                 (set-buffer-text buffer (woot:get-string document))
+                 (set-file-info buffer file)
+                 (setf (buffer-document buffer)
+                       (make-document-from-text (buffer-text buffer)))))
               (t
                (with-output-to-string (*standard-output*)
                  (editor-error "Rooms error: open-file: ~A"
                                (pretty-json-to-string response)))))))))
 
 (defun on-before-change (point arg)
-  (let* ((buffer (point-buffer point))
-         (filename (buffer-filename buffer)))
-    (when (and filename (room-path-p filename))
-      (let ((file-id (buffer-file-id buffer)))
-        (etypecase arg
-          (string
-           (jsonrpc-notify "insert-string"
-                           (hash :access-token (access-token)
-                                 :file-id file-id
-                                 :position (position-of point)
-                                 :string arg)))
-          (integer
-           (with-point ((end point))
-             (character-offset end arg)
-             (jsonrpc-notify "delete-string"
-                             (hash :access-token (access-token)
-                                   :file-id file-id
-                                   :region (hash :start (position-of point)
-                                                 :end (position-of end)))))))))))
+  (unless *inhibit-did-change*
+    (let* ((buffer (point-buffer point))
+           (filename (buffer-filename buffer)))
+      (when (and filename (room-path-p filename) (buffer-document buffer))
+        (let ((file-id (buffer-file-id buffer)))
+          (etypecase arg
+            (string
+             (let ((woot-char (woot:generate-insert (buffer-document buffer)
+                                                    (position-of point)
+                                                    arg)))
+               (jsonrpc-notify "woot/insert"
+                               (hash :access-token (access-token)
+                                     :file-id file-id
+                                     :character woot-char))))
+            (integer
+             (with-point ((end point))
+               (character-offset end arg)
+               (loop :repeat arg
+                     :do (let ((woot-char
+                                 (woot:generate-delete (buffer-document buffer)
+                                                       (position-of point))))
+                           (jsonrpc-notify "woot/delete"
+                                           (hash :access-token (access-token)
+                                                 :file-id file-id
+                                                 :character woot-char))))))))))))
 
 (define-command rooms-list () ()
   (lem/multi-column-list:display

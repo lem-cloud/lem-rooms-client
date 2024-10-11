@@ -1,7 +1,15 @@
 (uiop:define-package :lem-rooms-client/woot
   (:use #:cl
         #:alexandria)
-  (:export))
+  (:export #:char-id-site-id
+           #:char-id-local-id
+           #:woot-char-id
+           #:woot-char-visible
+           #:woot-char-value
+           #:woot-char-next
+           #:woot-char-previous
+           #:generate-insert
+           #:generate-delete))
 (in-package :lem-rooms-client/woot)
 
 (defvar *local-id* 0)
