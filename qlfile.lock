@@ -48,11 +48,11 @@
   :version "git-0a54e65e13f2eb174d47d3d2d21ae46ff29c547d"))
 ("lem" .
  (:class qlot/source/local:source-local
-  :initargs (:path "/Users/user/projects/lem")))
+  :initargs (:path "/home/user/projects/lem")))
 ("cl-frugal-uuid" .
  (:class qlot/source/git:source-git
   :initargs (:remote-url "https://github.com/ak-coram/cl-frugal-uuid")
   :version "git-f517e822183eeb1003615aa66ed5f84e932c2c2d"))
 ("crdt" .
  (:class qlot/source/local:source-local
-  :initargs (:path "/Users/user/projects/rooms-dev/web/.qlot/local-projects/crdt/")))
+  :initargs (:path "/home/user/projects/rooms-dev/web/.qlot/local-projects/crdt/")))

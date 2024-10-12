@@ -1,5 +1,6 @@
 (defsystem "lem-rooms-client"
   :depends-on ("lem"
+               "jsonrpc"
                "jsonrpc/transport/websocket"
                "frugal-uuid"
                "crdt")

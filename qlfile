@@ -9,7 +9,7 @@ git cl-sdl2-image https://github.com/lem-project/cl-sdl2-image.git
 git jsonrpc https://github.com/cxxxr/jsonrpc.git
 git dissect https://github.com/Shinmera/dissect.git
 git 3bmd https://github.com/3b/3bmd.git
-local lem /Users/user/projects/lem
+local lem /home/user/projects/lem
 
 git cl-frugal-uuid https://github.com/ak-coram/cl-frugal-uuid
-local crdt /Users/user/projects/rooms-dev/web/.qlot/local-projects/crdt/
+local crdt /home/user/projects/rooms-dev/web/.qlot/local-projects/crdt/

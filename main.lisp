@@ -159,6 +159,7 @@
     (when (room-path-p filename)
       (setf (buffer-document buffer)
             (make-document-from-text (buffer-text buffer)))
+      (setf (revert-buffer-function buffer) (lambda (buffer) (declare (ignore buffer))))
       (let* ((room-id (file-room-id filename))
              (response
                (jsonrpc-call "open-file"
@@ -189,6 +190,11 @@
     (let* ((buffer (point-buffer point))
            (filename (buffer-filename buffer)))
       (when (and filename (room-path-p filename) (buffer-document buffer))
+        (let ((buffer (make-buffer "*test*")))
+          (insert-string (buffer-point buffer)
+                         (with-output-to-string (out)
+                           (uiop:print-backtrace :stream out)
+                           (terpri out))))
         (let ((file-id (buffer-file-id buffer)))
           (etypecase arg
             (string
@@ -214,17 +220,26 @@
                                                  :character woot-char))))))))))))
 
 (defun on-insert (params)
-  (when-let ((buffer (find-buffer-by-file-id (gethash "file-id" params))))
-    (let ((character (woot:make-character-from-hash (gethash "character" params))))
-      (woot:insert-char (buffer-document buffer) character)
-      (let ((pos (woot:char-position (buffer-document buffer) character)))
-        (with-point ((point (buffer-point buffer)))
-          (move-to-position point (1+ pos))
-          (insert-string point (woot:woot-char-value character))))
-      )))
+  (let ((*inhibit-did-change* t))
+    (when-let ((buffer (find-buffer-by-file-id (gethash "file-id" params))))
+      (let ((character (woot:make-character-from-hash (gethash "character" params))))
+        (woot:insert-char (buffer-document buffer) character)
+        (let ((pos (woot:char-position (buffer-document buffer) character)))
+          (with-point ((point (buffer-point buffer)))
+            (move-to-position point (1+ pos))
+            (insert-string point (woot:woot-char-value character))
+            (redraw-display)))))))
 
 (defun on-delete (params)
-  )
+  (let ((*inhibit-did-change* t))
+    (when-let ((buffer (find-buffer-by-file-id (gethash "file-id" params))))
+      (let ((character (woot:make-character-from-hash (gethash "character" params))))
+        (let ((pos (woot:char-position (buffer-document buffer) character)))
+          (with-point ((point (buffer-point buffer)))
+            (move-to-position point (1+ pos))
+            (delete-character point 1)
+            (woot:delete-char (buffer-document buffer) character)
+            (redraw-display)))))))
 
 (define-command rooms-list () ()
   (lem/multi-column-list:display
