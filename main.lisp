@@ -32,6 +32,11 @@
 (defun (setf buffer-document) (document buffer)
   (setf (buffer-value buffer 'document) document))
 
+(defun find-buffer-by-file-id (file-id)
+  (dolist (buffer (buffer-list))
+    (when (equal file-id (buffer-file-id buffer))
+      (return buffer))))
+
 (defun position-of (point)
   (1- (position-at-point point)))
 
@@ -51,6 +56,8 @@
 
 (defun connect ()
   (setf *client* (jsonrpc:make-client))
+  (jsonrpc:expose *client* "woot/insert" 'on-insert)
+  (jsonrpc:expose *client* "woot/delete" 'on-delete)
   (jsonrpc:client-connect *client*
                           :mode :websocket
                           :host (hostname)
@@ -85,13 +92,15 @@
         (room-directory
           (uiop:ensure-directory-pathname
            (merge-pathnames room-id (rooms-home)))))
+    (defparameter $response response)
     (ensure-directories-exist room-directory)
 
     (dolist (file (gethash "files" response))
-      (alexandria:write-string-into-file (fetch-file-text (gethash "id" file))
-                                         (merge-pathnames (gethash "path" file)
-                                                          room-directory)
-                                         :if-exists :supersede))
+      (let ((text (fetch-file-text (gethash "id" file))))
+        (write-string-into-file text
+                                (merge-pathnames (gethash "path" file)
+                                                 room-directory)
+                                :if-exists :supersede)))
 
     (add-hook *find-file-hook* 'on-find-file)
     (add-hook (variable-value 'before-change-functions :global t) 'on-before-change)
@@ -142,34 +151,34 @@
   (let ((document (woot:make-document (frugal-uuid:make-v4-string))))
     (loop :for c :across text
           :for pos :from 0
-          :do (woot:generate-insert document pos c))
+          :do (woot:generate-insert document pos (string c)))
     document))
 
 (defun on-find-file (buffer)
   (when-let ((filename (buffer-filename buffer)))
     (when (room-path-p filename)
+      (setf (buffer-document buffer)
+            (make-document-from-text (buffer-text buffer)))
       (let* ((room-id (file-room-id filename))
-             (response (jsonrpc-call "open-file"
-                                     (hash :access-token (access-token)
-                                           :room-id room-id
-                                           :path (file-to-room-path room-id filename)
-                                           :text (buffer-text buffer)))))
+             (response
+               (jsonrpc-call "open-file"
+                             (hash :access-token (access-token)
+                                   :room-id room-id
+                                   :path (file-to-room-path room-id filename)
+                                   :characters (woot::document-sequence
+                                                (buffer-document buffer))))))
+        (defparameter $open-file-response response)
         (cond ((null (gethash "error" response))
-               (set-file-info buffer response)
-               (setf (buffer-document buffer)
-                     (make-document-from-text (buffer-text buffer))))
+               (set-file-info buffer response))
               ((equal "already-file-exists" (gethash "error" response))
                (let ((file (gethash "file" response))
-                     (woot-sequence (gethash "woot-sequence" response))
-                     (document (woot:make-document (frugal-uuid:make-v4-string))))
-                 (woot:replace-with-woot-sequence document
-                                                  (map 'vector
+                     (woot-sequence (gethash "woot-sequence" response)))
+                 (woot:replace-with-woot-sequence (buffer-document buffer)
+                                                  (map 'list
                                                        #'woot:make-character-from-hash
                                                        woot-sequence))
-                 (set-buffer-text buffer (woot:get-string document))
-                 (set-file-info buffer file)
-                 (setf (buffer-document buffer)
-                       (make-document-from-text (buffer-text buffer)))))
+                 (set-buffer-text buffer (woot:get-string (buffer-document buffer)))
+                 (set-file-info buffer file)))
               (t
                (with-output-to-string (*standard-output*)
                  (editor-error "Rooms error: open-file: ~A"
@@ -183,13 +192,15 @@
         (let ((file-id (buffer-file-id buffer)))
           (etypecase arg
             (string
-             (let ((woot-char (woot:generate-insert (buffer-document buffer)
-                                                    (position-of point)
-                                                    arg)))
-               (jsonrpc-notify "woot/insert"
-                               (hash :access-token (access-token)
-                                     :file-id file-id
-                                     :character woot-char))))
+             (loop :for c :across arg
+                   :for pos :from (position-of point)
+                   :do (let ((woot-char (woot:generate-insert (buffer-document buffer)
+                                                              pos
+                                                              (string c))))
+                         (jsonrpc-notify "woot/insert"
+                                         (hash :access-token (access-token)
+                                               :file-id file-id
+                                               :character woot-char)))))
             (integer
              (with-point ((end point))
                (character-offset end arg)
@@ -201,6 +212,19 @@
                                            (hash :access-token (access-token)
                                                  :file-id file-id
                                                  :character woot-char))))))))))))
+
+(defun on-insert (params)
+  (when-let ((buffer (find-buffer-by-file-id (gethash "file-id" params))))
+    (let ((character (woot:make-character-from-hash (gethash "character" params))))
+      (woot:insert-char (buffer-document buffer) character)
+      (let ((pos (woot:char-position (buffer-document buffer) character)))
+        (with-point ((point (buffer-point buffer)))
+          (move-to-position point (1+ pos))
+          (insert-string point (woot:woot-char-value character))))
+      )))
+
+(defun on-delete (params)
+  )
 
 (define-command rooms-list () ()
   (lem/multi-column-list:display
