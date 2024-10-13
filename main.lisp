@@ -201,7 +201,7 @@
                          (jsonrpc-notify "woot/insert"
                                          (hash :access-token (access-token)
                                                :file-id file-id
-                                               :character woot-char)))))
+                                               :character (woot:copy-woot-char woot-char))))))
             (integer
              (with-point ((end point))
                (character-offset end arg)
@@ -212,30 +212,34 @@
                            (jsonrpc-notify "woot/delete"
                                            (hash :access-token (access-token)
                                                  :file-id file-id
-                                                 :character woot-char))))))))))))
+                                                 :character (woot:copy-woot-char
+                                                             woot-char)))))))))))))
 
 (defun on-insert (params)
-  (let ((*inhibit-did-change* t))
-    (when-let ((buffer (find-buffer-by-file-id (gethash "file-id" params))))
-      (let ((character (woot:make-character-from-hash (gethash "character" params))))
-        (woot:insert-char (buffer-document buffer) character)
-        (let ((pos (woot:char-position (buffer-document buffer) character)))
-          (with-point ((point (buffer-point buffer)))
-            (move-to-position point pos)
-            (insert-string point (woot:woot-char-value character))
-            (redraw-display)))))))
+  (send-event
+   (lambda ()
+     (let ((*inhibit-did-change* t))
+       (when-let ((buffer (find-buffer-by-file-id (gethash "file-id" params))))
+         (let ((character (woot:make-character-from-hash (gethash "character" params))))
+           (woot:insert-char (buffer-document buffer) character)
+           (let ((pos (woot:char-position (buffer-document buffer) character)))
+             (with-point ((point (buffer-point buffer)))
+               (move-to-position point pos)
+               (insert-string point (woot:woot-char-value character))
+               (redraw-display)))))))))
 
 (defun on-delete (params)
-  (let ((*inhibit-did-change* t))
-    (when-let ((buffer (find-buffer-by-file-id (gethash "file-id" params))))
-      (let* ((character (woot:make-character-from-hash (gethash "character" params)))
-             (pos (woot:char-position (buffer-document buffer) character)))
-        (message "pos: ~A" pos)
-        (with-point ((point (buffer-point buffer)))
-          (move-to-position point (1+ pos))
-          (delete-character point 1)
-          (woot:delete-char (buffer-document buffer) character)
-          (redraw-display))))))
+  (send-event
+   (lambda ()
+     (let ((*inhibit-did-change* t))
+       (when-let ((buffer (find-buffer-by-file-id (gethash "file-id" params))))
+         (let* ((character (woot:make-character-from-hash (gethash "character" params)))
+                (pos (woot:char-position (buffer-document buffer) character)))
+           (with-point ((point (buffer-point buffer)))
+             (when (woot:delete-char (buffer-document buffer) character)
+               (move-to-position point (1+ pos))
+               (delete-character point 1)
+               (redraw-display)))))))))
 
 (define-command rooms-list () ()
   (lem/multi-column-list:display
