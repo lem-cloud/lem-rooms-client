@@ -205,10 +205,11 @@
             (integer
              (with-point ((end point))
                (character-offset end arg)
-               (loop :repeat arg
+               (loop :with pos := (position-of point)
+                     :repeat arg
                      :do (let ((woot-char
                                  (woot:generate-delete (buffer-document buffer)
-                                                       (position-of point))))
+                                                       pos)))
                            (jsonrpc-notify "woot/delete"
                                            (hash :access-token (access-token)
                                                  :file-id file-id
@@ -224,7 +225,7 @@
            (woot:insert-char (buffer-document buffer) character)
            (let ((pos (woot:char-position (buffer-document buffer) character)))
              (with-point ((point (buffer-point buffer)))
-               (move-to-position point pos)
+               (move-to-position point (1+ pos))
                (insert-string point (woot:woot-char-value character))
                (redraw-display)))))))))
 
@@ -235,8 +236,8 @@
        (when-let ((buffer (find-buffer-by-file-id (gethash "file-id" params))))
          (let* ((character (woot:make-character-from-hash (gethash "character" params)))
                 (pos (woot:char-position (buffer-document buffer) character)))
-           (with-point ((point (buffer-point buffer)))
-             (when (woot:delete-char (buffer-document buffer) character)
+           (when (woot:delete-char (buffer-document buffer) character)
+             (with-point ((point (buffer-point buffer)))
                (move-to-position point (1+ pos))
                (delete-character point 1)
                (redraw-display)))))))))
