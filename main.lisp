@@ -201,7 +201,7 @@
                          (jsonrpc-notify "woot/insert"
                                          (hash :access-token (access-token)
                                                :file-id file-id
-                                               :character (woot:copy-woot-char woot-char))))))
+                                               :character woot-char)))))
             (integer
              (with-point ((end point))
                (character-offset end arg)
@@ -213,8 +213,7 @@
                            (jsonrpc-notify "woot/delete"
                                            (hash :access-token (access-token)
                                                  :file-id file-id
-                                                 :character (woot:copy-woot-char
-                                                             woot-char)))))))))))))
+                                                 :character woot-char))))))))))))
 
 (defun on-insert (params)
   (send-event
