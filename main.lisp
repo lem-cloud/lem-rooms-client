@@ -206,17 +206,18 @@
             (integer
              (with-point ((end point))
                (character-offset end arg)
-               (loop :with pos := (position-of point)
-                     :repeat arg
-                     :do (let ((woot-char
-                                 (woot:generate-delete (buffer-document buffer)
-                                                       pos)))
-                           (jsonrpc-notify "woot/edit"
-                                           (hash :access-token (access-token)
-                                                 :file-id file-id
-                                                 :ops (vector
-                                                       (hash :operate "delete"
-                                                             :character woot-char))))))))))))))
+               (jsonrpc-notify
+                "woot/edit"
+                (hash :access-token (access-token)
+                      :file-id file-id
+                      :ops
+                      (loop :with pos := (position-of point)
+                            :repeat arg
+                            :collect (let ((woot-char
+                                             (woot:generate-delete (buffer-document buffer)
+                                                                   pos)))
+                                       (hash :operate "delete"
+                                             :character woot-char)))))))))))))
 
 (defun on-edit (params)
   (send-event
@@ -233,16 +234,15 @@
                      (let ((pos (woot:char-position (buffer-document buffer) character)))
                        (with-point ((point (buffer-point buffer)))
                          (move-to-position point (1+ pos))
-                         (insert-string point (woot:woot-char-value character))
-                         (redraw-display))))
+                         (insert-string point (woot:woot-char-value character)))))
                     ("delete"
                      (let ((pos (woot:char-position (buffer-document buffer) character)))
                        (when (woot:delete-char (buffer-document buffer) character)
                          (with-point ((point (buffer-point buffer)))
                            (move-to-position point (1+ pos))
-                           (delete-character point 1)
-                           (redraw-display))))))))
-              (gethash "ops" params)))))))
+                           (delete-character point 1))))))))
+              (gethash "ops" params))))
+     (redraw-display))))
 
 (define-command rooms-list () ()
   (lem/multi-column-list:display
