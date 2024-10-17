@@ -83,6 +83,29 @@
                 (hash :access-token (access-token)
                       :file-id file-id)))
 
+
+(defvar *edit-queue-map* (make-hash-table :test 'equal))
+
+(defvar *edit-queue* (lem/common/queue:make-queue))
+
+(defun enqueue (file-id edit)
+  (unless (gethash file-id *edit-queue-map*)
+    (setf (gethash file-id *edit-queue-map*)
+          (lem/common/queue:make-queue)))
+  (lem/common/queue:enqueue (gethash file-id *edit-queue-map*) edit))
+
+(defun bulk-notify ()
+  (maphash (lambda (file-id queue)
+             (jsonrpc-notify "woot/edit"
+                             (hash :access-token (access-token)
+                                   :file-id file-id
+                                   :ops (loop :until (lem/common/queue:empty-p queue)
+                                              :append (lem/common/queue:dequeue queue)))))
+           *edit-queue-map*))
+
+(defvar *notification-timer*
+  (make-idle-timer 'bulk-notify :name "lem-rooms-client/bulk-notify"))
+
 (defun enter-room (room-id)
   (let ((response
           (jsonrpc-call "enter-room"
@@ -103,6 +126,9 @@
 
     (add-hook *find-file-hook* 'on-find-file)
     (add-hook (variable-value 'before-change-functions :global t) 'on-before-change)
+
+    (start-timer *notification-timer* 100 :repeat t)
+
     (find-file room-directory)))
 
 (defvar *room-path-regex* nil)
@@ -192,34 +218,28 @@
         (let ((file-id (buffer-file-id buffer)))
           (etypecase arg
             (string
-             (jsonrpc-notify
-              "woot/edit"
-              (hash :access-token (access-token)
-                    :file-id file-id
-                    :ops
-                    (loop :for c :across arg
-                          :for pos :from (position-of point)
-                          :collect (let ((woot-char (woot:generate-insert
-                                                     (buffer-document buffer)
-                                                     pos
-                                                     (string c))))
-                                     (hash :operate "insert"
-                                           :character woot-char))))))
+             (enqueue
+              file-id
+              (loop :for c :across arg
+                    :for pos :from (position-of point)
+                    :collect (let ((woot-char (woot:generate-insert
+                                               (buffer-document buffer)
+                                               pos
+                                               (string c))))
+                               (hash :operate "insert"
+                                     :character woot-char)))))
             (integer
              (with-point ((end point))
                (character-offset end arg)
-               (jsonrpc-notify
-                "woot/edit"
-                (hash :access-token (access-token)
-                      :file-id file-id
-                      :ops
-                      (loop :with pos := (position-of point)
-                            :repeat arg
-                            :collect (let ((woot-char
-                                             (woot:generate-delete (buffer-document buffer)
-                                                                   pos)))
-                                       (hash :operate "delete"
-                                             :character woot-char)))))))))))))
+               (enqueue
+                file-id
+                (loop :with pos := (position-of point)
+                      :repeat arg
+                      :collect (let ((woot-char
+                                       (woot:generate-delete (buffer-document buffer)
+                                                             pos)))
+                                 (hash :operate "delete"
+                                       :character woot-char))))))))))))
 
 (defun on-edit (params)
   (send-event
