@@ -192,17 +192,19 @@
         (let ((file-id (buffer-file-id buffer)))
           (etypecase arg
             (string
-             (loop :for c :across arg
-                   :for pos :from (position-of point)
-                   :do (let ((woot-char (woot:generate-insert (buffer-document buffer)
-                                                              pos
-                                                              (string c))))
-                         (jsonrpc-notify "woot/edit"
-                                         (hash :access-token (access-token)
-                                               :file-id file-id
-                                               :ops (vector
-                                                     (hash :operate "insert"
-                                                           :character woot-char)))))))
+             (jsonrpc-notify
+              "woot/edit"
+              (hash :access-token (access-token)
+                    :file-id file-id
+                    :ops
+                    (loop :for c :across arg
+                          :for pos :from (position-of point)
+                          :collect (let ((woot-char (woot:generate-insert
+                                                     (buffer-document buffer)
+                                                     pos
+                                                     (string c))))
+                                     (hash :operate "insert"
+                                           :character woot-char))))))
             (integer
              (with-point ((end point))
                (character-offset end arg)
