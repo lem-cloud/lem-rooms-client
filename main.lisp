@@ -231,52 +231,52 @@
         (let ((file-id (buffer-file-id buffer)))
           (etypecase arg
             (string
-             (enqueue
-              file-id
-              (loop :for c :across arg
-                    :for pos :from (position-of point)
-                    :collect (let ((woot-char (woot:generate-insert
-                                               (buffer-document buffer)
-                                               pos
-                                               (string c))))
-                               (hash :operate "insert"
-                                     :character woot-char)))))
+             (enqueue file-id
+                      (loop :for c :across arg
+                            :for pos :from (position-of point)
+                            :collect (let ((woot-char
+                                             (woot:generate-insert (buffer-document buffer)
+                                                                   pos
+                                                                   (string c))))
+                                       (hash :operate "insert"
+                                             :character woot-char)))))
             (integer
              (with-point ((end point))
-               (character-offset end arg)
-               (enqueue
-                file-id
-                (loop :with pos := (position-of point)
-                      :repeat arg
-                      :collect (let ((woot-char
-                                       (woot:generate-delete (buffer-document buffer)
-                                                             pos)))
-                                 (hash :operate "delete"
-                                       :character woot-char))))))))))))
+               (unless (character-offset end arg)
+                 (buffer-end end))
+               (enqueue file-id
+                        (loop :with pos := (position-of point)
+                              :repeat (count-characters point end)
+                              :collect (let ((woot-char
+                                               (woot:generate-delete (buffer-document buffer)
+                                                                     pos)))
+                                         (hash :operate "delete"
+                                               :character woot-char))))))))))))
 
 (defun on-edit (params)
   (send-event
    (lambda ()
      (let ((*inhibit-change-notification* t))
-       (when-let ((buffer (find-buffer-by-file-id (gethash "file-id" params))))
-         (map ()
-              (lambda (op)
-                (let ((operate (gethash "operate" op))
-                      (character (woot:make-character-from-hash (gethash "character" op))))
-                  (eswitch (operate :test #'string=)
-                    ("insert"
-                     (woot:insert-char (buffer-document buffer) character)
-                     (let ((pos (woot:char-position (buffer-document buffer) character)))
-                       (with-point ((point (buffer-point buffer)))
-                         (move-to-position point (1+ pos))
-                         (insert-string point (woot:woot-char-value character)))))
-                    ("delete"
-                     (let ((pos (woot:char-position (buffer-document buffer) character)))
-                       (when (woot:delete-char (buffer-document buffer) character)
+       (with-inhibit-undo ()
+         (when-let ((buffer (find-buffer-by-file-id (gethash "file-id" params))))
+           (map ()
+                (lambda (op)
+                  (let ((operate (gethash "operate" op))
+                        (character (woot:make-character-from-hash (gethash "character" op))))
+                    (eswitch (operate :test #'string=)
+                      ("insert"
+                       (woot:insert-char (buffer-document buffer) character)
+                       (let ((pos (woot:char-position (buffer-document buffer) character)))
                          (with-point ((point (buffer-point buffer)))
                            (move-to-position point (1+ pos))
-                           (delete-character point 1))))))))
-              (gethash "ops" params))))
+                           (insert-string point (woot:woot-char-value character)))))
+                      ("delete"
+                       (let ((pos (woot:char-position (buffer-document buffer) character)))
+                         (when (woot:delete-char (buffer-document buffer) character)
+                           (with-point ((point (buffer-point buffer)))
+                             (move-to-position point (1+ pos))
+                             (delete-character point 1))))))))
+                (gethash "ops" params)))))
      (redraw-display))))
 
 (defun destructuring-focus-parameters (params)
