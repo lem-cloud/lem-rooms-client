@@ -8,4 +8,5 @@
                (:file "config")
                (:file "http")
                (:file "sign-in")
+               (:file "cursor")
                (:file "main")))

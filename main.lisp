@@ -5,7 +5,8 @@
         #:lem-rooms-client/utils
         #:lem-rooms-client/config)
   (:local-nicknames (:http :lem-rooms-client/http)
-                    (:woot :crdt/woot))
+                    (:woot :crdt/woot)
+                    (:cursor :lem-rooms-client/cursor))
   (:export))
 (in-package :lem-rooms-client)
 
@@ -57,6 +58,7 @@
 (defun connect ()
   (setf *client* (jsonrpc:make-client))
   (jsonrpc:expose *client* "woot/edit" 'on-edit)
+  (jsonrpc:expose *client* "focus" 'on-focus)
   (jsonrpc:client-connect *client*
                           :mode :websocket
                           :host (hostname)
@@ -86,7 +88,10 @@
 
 (defvar *edit-queue-map* (make-hash-table :test 'equal))
 
-(defvar *edit-queue* (lem/common/queue:make-queue))
+(defun empty-queue-p (file-id)
+  (if-let (queue (gethash file-id *edit-queue-map*))
+    (lem/common/queue:empty-p queue)
+    t))
 
 (defun enqueue (file-id edit)
   (unless (gethash file-id *edit-queue-map*)
@@ -101,7 +106,8 @@
                                    :file-id file-id
                                    :ops (loop :until (lem/common/queue:empty-p queue)
                                               :append (lem/common/queue:dequeue queue)))))
-           *edit-queue-map*))
+           *edit-queue-map*)
+  (notify-current-cursor))
 
 (defvar *notification-timer*
   (make-idle-timer 'bulk-notify :name "lem-rooms-client/bulk-notify"))
@@ -210,6 +216,13 @@
                  (editor-error "Rooms error: open-file: ~A"
                                (pretty-json-to-string response)))))))))
 
+(defun notify-current-cursor ()
+  (when-let (file-id (buffer-file-id (current-buffer)))
+    (jsonrpc-notify "focus"
+                    (hash :access-token (access-token)
+                          :file-id file-id
+                          :position (position-of (current-point))))))
+
 (defun on-before-change (point arg)
   (unless *inhibit-change-notification*
     (let* ((buffer (point-buffer point))
@@ -265,6 +278,30 @@
                            (delete-character point 1))))))))
               (gethash "ops" params))))
      (redraw-display))))
+
+(defun destructuring-focus-parameters (params)
+  (let* ((position (gethash "position" params))
+         (file-id (gethash "file-id" params))
+         (color (gethash "color" params))
+         (user (gethash "user" params))
+         (user-id (gethash "id" user))
+         (user-name (gethash "name" user)))
+    (list :position position
+          :file-id file-id
+          :user-id user-id
+          :user-name user-name
+          :color color)))
+
+(defun on-focus (params)
+  (destructuring-bind (&key position file-id user-id user-name color)
+      (destructuring-focus-parameters params)
+    (lem:send-event (lambda ()
+                      (when-let (buffer (find-buffer-by-file-id file-id))
+                        (cursor:set-cursor buffer
+                                           user-id
+                                           user-name
+                                           color
+                                           (1+ position)))))))
 
 (define-command rooms-list () ()
   (lem/multi-column-list:display
