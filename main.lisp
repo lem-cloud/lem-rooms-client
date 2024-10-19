@@ -59,10 +59,12 @@
   (setf *client* (jsonrpc:make-client))
   (jsonrpc:expose *client* "woot/edit" 'on-edit)
   (jsonrpc:expose *client* "focus" 'on-focus)
-  (jsonrpc:client-connect *client*
-                          :mode :websocket
-                          :host (hostname)
-                          :port 51000))
+  (let ((url (quri:uri (base-url))))
+    (jsonrpc:client-connect *client*
+                            :mode :websocket
+                            :securep (equal "https" (quri:uri-scheme url))
+                            :host (quri:uri-host url)
+                            :port 51000)))
 
 (defun ensure-connection ()
   (unless *client*

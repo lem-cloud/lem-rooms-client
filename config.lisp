@@ -2,7 +2,7 @@
   (:use #:cl
 	#:lem)
   (:export #:access-token
-           #:hostname))
+           #:base-url))
 (in-package :lem-rooms-client/config)
 
 (defun access-token ()
@@ -11,5 +11,5 @@
 (defun (setf access-token) (access-token)
   (setf (config :rooms.access-token) access-token))
 
-(defun hostname ()
-  "localhost")
+(defun base-url ()
+  "http://localhost")

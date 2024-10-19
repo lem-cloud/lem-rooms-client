@@ -7,8 +7,7 @@
 (in-package :lem-rooms-client/http)
 
 (defun url (path)
-  (quri:make-uri :scheme "http"
-                 :host (hostname)
+  (quri:make-uri :defaults (base-url)
                  :port 5001
                  :path path))
 

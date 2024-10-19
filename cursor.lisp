@@ -61,7 +61,7 @@
       (setf (lem:current-buffer) buffer)
       (lem:move-to-position (lem:current-point) position)
       (setf (cursor-overlay-popup-message cursor)
-            (lem:display-popup-message name
+            (lem:display-popup-message (format nil " ~A " name)
                                        :timeout 1
                                        :style `(:gravity :cursor
                                                 :use-border nil
