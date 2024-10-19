@@ -1,17 +1,13 @@
 (uiop:define-package :lem-rooms-client/config
   (:use #:cl
 	#:lem)
-  (:export #:base-url
+  (:export #:*rooms-url*
+           #:*editor-server-url*
            #:access-token))
 (in-package :lem-rooms-client/config)
 
-(defparameter *base-url* "http://localhost")
-
-(defun base-url ()
-  "http://localhost")
-
-(defun (setf base-url) (base-url)
-  (setf *base-url* base-url))
+(defparameter *rooms-url* "http://localhost:5000")
+(defparameter *editor-server-url* "http://localhost:51000")
 
 (defun access-token ()
   (config :rooms.access-token))
