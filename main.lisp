@@ -235,9 +235,10 @@
                       (loop :for c :across arg
                             :for pos :from (position-of point)
                             :collect (let ((woot-char
-                                             (woot:generate-insert (buffer-document buffer)
-                                                                   pos
-                                                                   (string c))))
+                                             (woot:copy-woot-char
+                                              (woot:generate-insert (buffer-document buffer)
+                                                                    pos
+                                                                    (string c)))))
                                        (hash :operate "insert"
                                              :character woot-char)))))
             (integer
@@ -248,8 +249,9 @@
                         (loop :with pos := (position-of point)
                               :repeat (count-characters point end)
                               :collect (let ((woot-char
-                                               (woot:generate-delete (buffer-document buffer)
-                                                                     pos)))
+                                               (woot:copy-woot-char
+                                                (woot:generate-delete (buffer-document buffer)
+                                                                      pos))))
                                          (hash :operate "delete"
                                                :character woot-char))))))))))))
 
@@ -267,14 +269,26 @@
                       ("insert"
                        (woot:insert-char (buffer-document buffer) character)
                        (let ((pos (woot:char-position (buffer-document buffer) character)))
+                         (assert pos () "op: insert, pos is nil but expect integer")
                          (with-point ((point (buffer-point buffer)))
                            (move-to-position point (1+ pos))
+                           (lem/buffer/internal::recompute-undo-position-offset
+                            buffer
+                            (lem/buffer/internal::make-edit :insert-string
+                                                            (position-at-point point)
+                                                            (woot:woot-char-value character)))
                            (insert-string point (woot:woot-char-value character)))))
                       ("delete"
                        (let ((pos (woot:char-position (buffer-document buffer) character)))
-                         (when (woot:delete-char (buffer-document buffer) character)
+                         (assert pos () "op: delete, pos is nil but expect integer")
+                         (when-let ((string (woot:delete-char (buffer-document buffer) character)))
                            (with-point ((point (buffer-point buffer)))
                              (move-to-position point (1+ pos))
+                             (lem/buffer/internal::recompute-undo-position-offset
+                              buffer
+                              (lem/buffer/internal::make-edit :delete-string
+                                                              (position-at-point point)
+                                                              (woot:woot-char-value character)))
                              (delete-character point 1))))))))
                 (gethash "ops" params)))))
      (redraw-display))))
