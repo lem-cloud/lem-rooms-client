@@ -1,7 +1,7 @@
 ("quicklisp" .
  (:class qlot/source/dist:source-dist
   :initargs (:distribution "https://beta.quicklisp.org/dist/quicklisp.txt" :%version :latest)
-  :version "2023-10-21"))
+  :version "2024-10-12"))
 ("micros" .
  (:class qlot/source/git:source-git
   :initargs (:remote-url "https://github.com/lem-project/micros.git")
@@ -49,11 +49,11 @@
 ("lem" .
  (:class qlot/source/git:source-git
   :initargs (:remote-url "https://github.com/lem-project/lem.git")
-  :version "git-1f2f9118fa8e2f95f7093539cec9c34f6298af5e"))
+  :version "git-f750fd6dd570510331d48c8add763d723c0476a8"))
 ("cl-frugal-uuid" .
  (:class qlot/source/git:source-git
   :initargs (:remote-url "https://github.com/ak-coram/cl-frugal-uuid")
-  :version "git-f517e822183eeb1003615aa66ed5f84e932c2c2d"))
+  :version "git-9e766a7f0487e4d3ba0ee7c4b1b4e046f531f0b3"))
 ("crdt" .
  (:class qlot/source/git:source-git
   :initargs (:remote-url "https://github.com/cxxxr/crdt.git")
