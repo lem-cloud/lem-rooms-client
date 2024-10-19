@@ -42,10 +42,10 @@
   (1- (position-at-point point)))
 
 (defun get-rooms ()
-  (http:get "rooms-v2"))
+  (http:get "/rooms-v2"))
 
 (defun create-room (room-name)
-  (http:post "rooms-v2"
+  (http:post "/rooms-v2"
              (json :name room-name
                    :scope "public")))
 

@@ -6,7 +6,7 @@
            #:access-token))
 (in-package :lem-rooms-client/config)
 
-(defparameter *rooms-url* "http://localhost:5000")
+(defparameter *rooms-url* "http://localhost:5001")
 (defparameter *editor-server-url* "http://localhost:51000")
 
 (defun access-token ()

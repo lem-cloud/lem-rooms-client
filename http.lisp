@@ -8,7 +8,6 @@
 
 (defun url (path)
   (quri:make-uri :defaults *rooms-url*
-                 :port 5001
                  :path path))
 
 (defun headers (authorization)
