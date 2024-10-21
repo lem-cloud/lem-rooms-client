@@ -37,7 +37,7 @@
 ("jsonrpc" .
  (:class qlot/source/git:source-git
   :initargs (:remote-url "https://github.com/cxxxr/jsonrpc.git")
-  :version "git-a43dd933838bb9596a2bf40e821af0bafd3d5356"))
+  :version "git-2af1e0fad429ee8c706b86c4a853248cdd1be933"))
 ("dissect" .
  (:class qlot/source/git:source-git
   :initargs (:remote-url "https://github.com/Shinmera/dissect.git")
@@ -49,7 +49,7 @@
 ("lem" .
  (:class qlot/source/git:source-git
   :initargs (:remote-url "https://github.com/lem-project/lem.git")
-  :version "git-f750fd6dd570510331d48c8add763d723c0476a8"))
+  :version "git-01d6d750f58e65afdd0cb6d260ce31ee3ba84a44"))
 ("cl-frugal-uuid" .
  (:class qlot/source/git:source-git
   :initargs (:remote-url "https://github.com/ak-coram/cl-frugal-uuid")
