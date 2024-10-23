@@ -49,7 +49,7 @@
 ("lem" .
  (:class qlot/source/git:source-git
   :initargs (:remote-url "https://github.com/lem-project/lem.git")
-  :version "git-c4a57321ecab452cf5ceb1e1f2c535869e109930"))
+  :version "git-b938a3aedbc4b3dd2a723bfcd285fa7598d10332"))
 ("cl-frugal-uuid" .
  (:class qlot/source/git:source-git
   :initargs (:remote-url "https://github.com/ak-coram/cl-frugal-uuid")
