@@ -6,8 +6,8 @@
            #:access-token))
 (in-package :lem-rooms-client/config)
 
-(defparameter *rooms-url* "http://localhost:5001")
-(defparameter *editor-server-url* "http://localhost:51000")
+(defparameter *rooms-url* "https://rooms.lem-project.net")
+(defparameter *editor-server-url* "https://arcalk.taild35c18.ts.net/")
 
 (defun access-token ()
   (config :rooms.access-token))
