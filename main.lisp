@@ -320,6 +320,8 @@
                                            (1+ position)))))))
 
 (define-command rooms-list () ()
+  (unless (access-token)
+    (lem-rooms-client/sign-in:rooms-sign-in))
   (lem/multi-column-list:display
    (make-instance 'lem/multi-column-list:multi-column-list
                   :columns '("Room" "Scope" "Owner")
