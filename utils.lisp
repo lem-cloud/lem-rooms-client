@@ -4,7 +4,8 @@
            #:json
            #:pretty-json
            #:pretty-json-to-string
-           #:print-json))
+           #:print-json
+           #:browser-frontend-p))
 (in-package :lem-rooms-client/utils)
 
 (defun hash (&rest plist)
@@ -30,3 +31,7 @@
 (defun print-json (json &optional (stream *standard-output*))
   (yason:with-output (stream :indent t)
     (yason:encode (yason:parse json))))
+
+(defun browser-frontend-p ()
+  (and (find-package :lem-server)
+       (typep (lem:implementation) (find-symbol "JSONRPC" :lem-server))))
