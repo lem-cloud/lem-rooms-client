@@ -6,7 +6,7 @@
            #:access-token))
 (in-package :lem-rooms-client/config)
 
-(defparameter *rooms-url* "https://rooms.lem-project.net")
+(defparameter *rooms-url* "https://lunoa.taild35c18.ts.net")
 (defparameter *editor-server-url* "https://arcalk.taild35c18.ts.net/")
 
 (defun access-token ()
